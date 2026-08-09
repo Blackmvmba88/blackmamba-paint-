@@ -298,8 +298,8 @@ fn point_segment_distance(point: Vec2, start: Vec2, end: Vec2) -> f64 {
         return point.distance(start);
     }
 
-    let t = (((point.x - start.x) * dx + (point.y - start.y) * dy) / length_squared)
-        .clamp(0.0, 1.0);
+    let t =
+        (((point.x - start.x) * dx + (point.y - start.y) * dy) / length_squared).clamp(0.0, 1.0);
     let projection = Vec2::new(start.x + t * dx, start.y + t * dy);
     point.distance(projection)
 }
