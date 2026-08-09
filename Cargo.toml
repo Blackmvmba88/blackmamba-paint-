@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "apps/blackmamba-paint",
+  "apps/blackmamba-paint-desktop",
   "crates/bmp-core",
   "crates/bmp-ai",
   "crates/bmp-perspective",
