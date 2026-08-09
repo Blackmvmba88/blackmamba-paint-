@@ -1,0 +1,10 @@
+[package]
+name = "blackmamba-paint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../../crates/bmp-core" }
+bmp-ai = { path = "../../crates/bmp-ai" }
+bmp-perspective = { path = "../../crates/bmp-perspective" }
