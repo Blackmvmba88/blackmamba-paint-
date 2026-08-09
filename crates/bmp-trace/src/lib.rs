@@ -148,24 +148,19 @@ pub fn trace_line(
     }
 
     initial.sort_by(|left, right| {
-        color_cost(image.pixel(*left).unwrap_or(seed_color), seed_color)
-            .total_cmp(&color_cost(
-                image.pixel(*right).unwrap_or(seed_color),
-                seed_color,
-            ))
+        color_cost(image.pixel(*left).unwrap_or(seed_color), seed_color).total_cmp(&color_cost(
+            image.pixel(*right).unwrap_or(seed_color),
+            seed_color,
+        ))
     });
 
     let first = initial.first().copied();
     let second = first.and_then(|first_coord| {
         let first_direction = direction(seed, first_coord);
-        initial
-            .iter()
-            .copied()
-            .skip(1)
-            .min_by(|left, right| {
-                cosine(first_direction, direction(seed, *left))
-                    .total_cmp(&cosine(first_direction, direction(seed, *right)))
-            })
+        initial.iter().copied().skip(1).min_by(|left, right| {
+            cosine(first_direction, direction(seed, *left))
+                .total_cmp(&cosine(first_direction, direction(seed, *right)))
+        })
     });
 
     let branch_a = if let Some(first_coord) = first {
@@ -375,13 +370,9 @@ mod tests {
     fn seed_click_extracts_only_the_connected_local_line() {
         let mut image = RasterImage::filled(9, 5, Rgba::WHITE).unwrap();
         for x in 1..=5 {
-            image
-                .set_pixel(PixelCoord::new(x, 2), Rgba::BLACK)
-                .unwrap();
+            image.set_pixel(PixelCoord::new(x, 2), Rgba::BLACK).unwrap();
         }
-        image
-            .set_pixel(PixelCoord::new(8, 0), Rgba::BLACK)
-            .unwrap();
+        image.set_pixel(PixelCoord::new(8, 0), Rgba::BLACK).unwrap();
 
         let result = trace_line(
             &image,
@@ -393,12 +384,7 @@ mod tests {
         )
         .unwrap();
 
-        let positions: Vec<_> = result
-            .path
-            .nodes
-            .iter()
-            .map(|node| node.position)
-            .collect();
+        let positions: Vec<_> = result.path.nodes.iter().map(|node| node.position).collect();
         assert_eq!(positions.len(), 5);
         assert_eq!(positions.first().unwrap(), &Vec2::new(1.0, 2.0));
         assert_eq!(positions.last().unwrap(), &Vec2::new(5.0, 2.0));
