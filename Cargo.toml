@@ -20,6 +20,7 @@ members = [
   "crates/bmp-reference",
   "crates/bmp-raster",
   "crates/bmp-import",
+  "crates/bmp-tracepulse",
 ]
 
 [workspace.package]
