@@ -1,7 +1,8 @@
-use bmp_core::RasterReference;
+use bmp_core::{Document, RasterReference};
 use bmp_path::{EditablePath, Vec2};
 use bmp_trace::PixelCoord;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WorldPoint {
@@ -30,6 +31,14 @@ impl WorldAabb {
             && self.min_y <= other.max_y
             && self.max_y >= other.min_y
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReferenceHit {
+    pub reference_id: Uuid,
+    pub asset_id: Uuid,
+    pub pixel: PixelCoord,
+    pub z_index: i64,
 }
 
 #[derive(Debug, Error, PartialEq)]
@@ -119,6 +128,34 @@ pub fn world_to_pixel(
     )))
 }
 
+pub fn hit_test_references(
+    document: &Document,
+    world: WorldPoint,
+) -> Result<Vec<ReferenceHit>, ReferenceError> {
+    let mut hits = Vec::new();
+    for reference in document
+        .raster_references
+        .values()
+        .filter(|reference| reference.visible && reference.opacity > 0.0)
+    {
+        if let Some(pixel) = world_to_pixel(reference, world)? {
+            hits.push(ReferenceHit {
+                reference_id: reference.id,
+                asset_id: reference.asset_id,
+                pixel,
+                z_index: reference.z_index,
+            });
+        }
+    }
+    hits.sort_by(|left, right| {
+        right
+            .z_index
+            .cmp(&left.z_index)
+            .then_with(|| right.reference_id.cmp(&left.reference_id))
+    });
+    Ok(hits)
+}
+
 pub fn world_corners(reference: &RasterReference) -> Result<[WorldPoint; 4], ReferenceError> {
     validate(reference)?;
     let half_width = reference.world_width * 0.5;
@@ -199,7 +236,6 @@ mod tests {
     use super::*;
     use bmp_path::{PathNode, Vec2};
     use std::f64::consts::FRAC_PI_2;
-    use uuid::Uuid;
 
     fn reference() -> RasterReference {
         let mut reference =
@@ -222,6 +258,43 @@ mod tests {
             let world = pixel_center_to_world(&reference, pixel).unwrap();
             assert_eq!(world_to_pixel(&reference, world).unwrap(), Some(pixel));
         }
+    }
+
+    #[test]
+    fn hit_test_returns_topmost_visible_reference_first() {
+        let mut document = Document::new("hits");
+        let mut low = RasterReference::new(Uuid::new_v4(), "low.png", "image/png", 10, 10);
+        low.world_width = 100.0;
+        low.world_height = 100.0;
+        low.z_index = 2;
+        let low_id = document.add_raster_reference(low);
+
+        let mut high = RasterReference::new(Uuid::new_v4(), "high.png", "image/png", 10, 10);
+        high.world_width = 100.0;
+        high.world_height = 100.0;
+        high.z_index = 9;
+        let high_id = document.add_raster_reference(high);
+
+        let hits = hit_test_references(&document, WorldPoint::new(0.0, 0.0)).unwrap();
+        assert_eq!(hits.len(), 2);
+        assert_eq!(hits[0].reference_id, high_id);
+        assert_eq!(hits[0].pixel, PixelCoord::new(5, 5));
+        assert_eq!(hits[1].reference_id, low_id);
+    }
+
+    #[test]
+    fn hidden_and_zero_opacity_references_are_not_hittable() {
+        let mut document = Document::new("hits");
+        let mut hidden = RasterReference::new(Uuid::new_v4(), "hidden.png", "image/png", 10, 10);
+        hidden.visible = false;
+        document.add_raster_reference(hidden);
+        let mut transparent =
+            RasterReference::new(Uuid::new_v4(), "transparent.png", "image/png", 10, 10);
+        transparent.opacity = 0.0;
+        document.add_raster_reference(transparent);
+        assert!(hit_test_references(&document, WorldPoint::new(0.0, 0.0))
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
