@@ -99,6 +99,40 @@ impl EditablePath {
         };
     }
 
+    pub fn flatten(&self, samples_per_segment: usize) -> Vec<Vec2> {
+        if self.nodes.is_empty() {
+            return Vec::new();
+        }
+        if self.nodes.len() == 1 {
+            return vec![self.nodes[0].position];
+        }
+
+        let samples_per_segment = samples_per_segment.max(1);
+        let segment_count = if self.closed {
+            self.nodes.len()
+        } else {
+            self.nodes.len() - 1
+        };
+        let mut points = Vec::with_capacity(segment_count * samples_per_segment + 1);
+        points.push(self.nodes[0].position);
+
+        for segment_index in 0..segment_count {
+            let start = &self.nodes[segment_index];
+            let end = &self.nodes[(segment_index + 1) % self.nodes.len()];
+            let p0 = start.position;
+            let p1 = start.out_handle.unwrap_or(p0);
+            let p3 = end.position;
+            let p2 = end.in_handle.unwrap_or(p3);
+
+            for sample_index in 1..=samples_per_segment {
+                let t = sample_index as f64 / samples_per_segment as f64;
+                points.push(cubic_bezier(p0, p1, p2, p3, t));
+            }
+        }
+
+        points
+    }
+
     pub fn divide_at(&self, index: usize) -> Result<(Self, Self), PathError> {
         if self.closed {
             return Err(PathError::CannotDivideClosedPath);
@@ -222,6 +256,18 @@ pub enum PathError {
     EndpointsTooFar { distance: f64, tolerance: f64 },
 }
 
+fn cubic_bezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: f64) -> Vec2 {
+    let one_minus_t = 1.0 - t;
+    let a = one_minus_t * one_minus_t * one_minus_t;
+    let b = 3.0 * one_minus_t * one_minus_t * t;
+    let c = 3.0 * one_minus_t * t * t;
+    let d = t * t * t;
+    Vec2::new(
+        a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+        a * p0.y + b * p1.y + c * p2.y + d * p3.y,
+    )
+}
+
 fn append_without_duplicate(mut left: Vec<PathNode>, right: Vec<PathNode>) -> Vec<PathNode> {
     left.extend(right.into_iter().skip(1));
     left
@@ -320,6 +366,51 @@ mod tests {
         assert_eq!(path.nodes.len(), 5);
         assert_eq!(path.nodes.first().unwrap().position, Vec2::new(0.0, 0.0));
         assert_eq!(path.nodes.last().unwrap().position, Vec2::new(20.0, 0.0));
+    }
+
+    #[test]
+    fn flatten_polyline_with_one_sample_per_segment_is_exact() {
+        let path = EditablePath::from_polyline([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(20.0, 0.0),
+        ]);
+        assert_eq!(
+            path.flatten(1),
+            vec![
+                Vec2::new(0.0, 0.0),
+                Vec2::new(10.0, 10.0),
+                Vec2::new(20.0, 0.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn flatten_samples_bezier_handles_without_mutating_source() {
+        let mut path = EditablePath::from_polyline([Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)]);
+        path.nodes[0].out_handle = Some(Vec2::new(0.0, 10.0));
+        path.nodes[1].in_handle = Some(Vec2::new(10.0, 10.0));
+        let before = path.clone();
+
+        let points = path.flatten(2);
+
+        assert_eq!(points.len(), 3);
+        assert!((points[1].x - 5.0).abs() < 1e-9);
+        assert!((points[1].y - 7.5).abs() < 1e-9);
+        assert_eq!(path, before);
+    }
+
+    #[test]
+    fn flatten_closed_path_returns_to_first_point() {
+        let mut path = EditablePath::from_polyline([
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(5.0, 10.0),
+        ]);
+        path.closed = true;
+        let points = path.flatten(1);
+        assert_eq!(points.len(), 4);
+        assert_eq!(points.first(), points.last());
     }
 
     #[test]
