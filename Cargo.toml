@@ -5,6 +5,10 @@ members = [
   "crates/bmp-core",
   "crates/bmp-ai",
   "crates/bmp-perspective",
+  "crates/bmp-space",
+  "crates/bmp-history",
+  "crates/bmp-storage",
+  "crates/bmp-input",
 ]
 
 [workspace.package]

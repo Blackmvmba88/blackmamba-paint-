@@ -1,0 +1,9 @@
+[package]
+name = "bmp-history"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../bmp-core" }
+thiserror.workspace = true

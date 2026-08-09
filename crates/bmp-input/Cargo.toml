@@ -1,0 +1,10 @@
+[package]
+name = "bmp-input"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../bmp-core" }
+serde.workspace = true
+uuid.workspace = true
