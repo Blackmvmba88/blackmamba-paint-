@@ -9,6 +9,7 @@ members = [
   "crates/bmp-history",
   "crates/bmp-storage",
   "crates/bmp-input",
+  "crates/bmp-path",
 ]
 
 [workspace.package]
