@@ -203,19 +203,10 @@ impl ArtReference {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct StyleGenome {
     pub traits: BTreeMap<String, f32>,
     pub descriptors: BTreeSet<String>,
-}
-
-impl Default for StyleGenome {
-    fn default() -> Self {
-        Self {
-            traits: BTreeMap::new(),
-            descriptors: BTreeSet::new(),
-        }
-    }
 }
 
 impl StyleGenome {
