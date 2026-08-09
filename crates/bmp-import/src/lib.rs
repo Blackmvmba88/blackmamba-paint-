@@ -151,8 +151,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(document.raster_references[&second_id].z_index
-            > document.raster_references[&first_id].z_index);
+        assert!(
+            document.raster_references[&second_id].z_index
+                > document.raster_references[&first_id].z_index
+        );
     }
 
     #[test]
