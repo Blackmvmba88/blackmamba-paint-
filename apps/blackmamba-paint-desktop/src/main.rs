@@ -133,11 +133,9 @@ impl GpuState {
         document: &Document,
         brushes: &BrushLibrary,
     ) -> Result<(), wgpu::SurfaceError> {
-        let viewport = ScreenViewport::new(
-            f64::from(self.config.width),
-            f64::from(self.config.height),
-        )
-        .expect("configured GPU surface has positive dimensions");
+        let viewport =
+            ScreenViewport::new(f64::from(self.config.width), f64::from(self.config.height))
+                .expect("configured GPU surface has positive dimensions");
         let scene = build_render_scene(document, document.camera, viewport, brushes)
             .expect("document camera and viewport are valid");
         let vertices = dabs_to_vertices(&scene.dabs, viewport);
