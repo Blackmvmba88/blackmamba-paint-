@@ -167,13 +167,8 @@ impl GpuState {
         let viewport =
             ScreenViewport::new(f64::from(self.config.width), f64::from(self.config.height))
                 .expect("configured GPU surface has positive dimensions");
-        let scene = build_render_scene(
-            render_document,
-            render_document.camera,
-            viewport,
-            brushes,
-        )
-        .expect("document camera and viewport are valid");
+        let scene = build_render_scene(render_document, render_document.camera, viewport, brushes)
+            .expect("document camera and viewport are valid");
         let vertices = dabs_to_vertices(&scene.dabs, viewport);
 
         let (frame, suboptimal) = match self.surface.get_current_texture() {
@@ -340,7 +335,12 @@ impl DesktopApp {
     }
 
     fn ensure_active_layer(&mut self) {
-        if self.document.layers.iter().any(|layer| layer.id == self.layer_id) {
+        if self
+            .document
+            .layers
+            .iter()
+            .any(|layer| layer.id == self.layer_id)
+        {
             return;
         }
         if let Some(layer) = self.document.layers.first() {
