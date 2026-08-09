@@ -1,4 +1,5 @@
 use bmp_core::RasterReference;
+use bmp_path::{EditablePath, Vec2};
 use bmp_trace::PixelCoord;
 use thiserror::Error;
 
@@ -39,6 +40,8 @@ pub enum ReferenceError {
     InvalidWorldDimensions { width: f64, height: f64 },
     #[error("pixel ({x}, {y}) is outside reference bounds")]
     PixelOutOfBounds { x: u32, y: u32 },
+    #[error("pixel-space coordinate must be finite, got ({x}, {y})")]
+    InvalidPixelCoordinate { x: f64, y: f64 },
 }
 
 pub fn pixel_center_to_world(
@@ -52,12 +55,43 @@ pub fn pixel_center_to_world(
             y: pixel.y,
         });
     }
+    pixel_space_to_world(reference, Vec2::new(f64::from(pixel.x), f64::from(pixel.y)))
+}
 
-    let u = (f64::from(pixel.x) + 0.5) / f64::from(reference.pixel_width);
-    let v = (f64::from(pixel.y) + 0.5) / f64::from(reference.pixel_height);
+pub fn pixel_space_to_world(
+    reference: &RasterReference,
+    pixel: Vec2,
+) -> Result<WorldPoint, ReferenceError> {
+    validate(reference)?;
+    if !pixel.x.is_finite() || !pixel.y.is_finite() {
+        return Err(ReferenceError::InvalidPixelCoordinate {
+            x: pixel.x,
+            y: pixel.y,
+        });
+    }
+
+    let u = (pixel.x + 0.5) / f64::from(reference.pixel_width);
+    let v = (pixel.y + 0.5) / f64::from(reference.pixel_height);
     let local_x = (u - 0.5) * reference.world_width;
     let local_y = (v - 0.5) * reference.world_height;
     Ok(local_to_world(reference, local_x, local_y))
+}
+
+pub fn editable_path_to_world(
+    reference: &RasterReference,
+    path: &EditablePath,
+) -> Result<EditablePath, ReferenceError> {
+    let mut transformed = path.clone();
+    for node in &mut transformed.nodes {
+        node.position = world_point_as_vec2(pixel_space_to_world(reference, node.position)?);
+        if let Some(handle) = node.in_handle {
+            node.in_handle = Some(world_point_as_vec2(pixel_space_to_world(reference, handle)?));
+        }
+        if let Some(handle) = node.out_handle {
+            node.out_handle = Some(world_point_as_vec2(pixel_space_to_world(reference, handle)?));
+        }
+    }
+    Ok(transformed)
 }
 
 pub fn world_to_pixel(
@@ -152,9 +186,14 @@ fn world_to_local(reference: &RasterReference, world: WorldPoint) -> (f64, f64) 
     (dx * cosine + dy * sine, -dx * sine + dy * cosine)
 }
 
+fn world_point_as_vec2(point: WorldPoint) -> Vec2 {
+    Vec2::new(point.x, point.y)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bmp_path::{PathNode, Vec2};
     use std::f64::consts::FRAC_PI_2;
     use uuid::Uuid;
 
@@ -179,6 +218,25 @@ mod tests {
             let world = pixel_center_to_world(&reference, pixel).unwrap();
             assert_eq!(world_to_pixel(&reference, world).unwrap(), Some(pixel));
         }
+    }
+
+    #[test]
+    fn tracepulse_path_moves_to_world_without_changing_path_identity() {
+        let mut reference = reference();
+        reference.rotation_rad = FRAC_PI_2;
+        let mut path = EditablePath::from_polyline([Vec2::new(0.0, 0.0), Vec2::new(99.0, 49.0)]);
+        let path_id = path.id;
+        path.nodes[0].out_handle = Some(Vec2::new(10.0, 0.0));
+        path.nodes.push(PathNode::new(Vec2::new(49.0, 24.0)));
+
+        let transformed = editable_path_to_world(&reference, &path).unwrap();
+
+        assert_eq!(transformed.id, path_id);
+        assert_eq!(transformed.nodes.len(), path.nodes.len());
+        assert!(transformed.nodes[0].out_handle.is_some());
+        let expected = pixel_center_to_world(&reference, PixelCoord::new(0, 0)).unwrap();
+        assert!((transformed.nodes[0].position.x - expected.x).abs() < 1e-9);
+        assert!((transformed.nodes[0].position.y - expected.y).abs() < 1e-9);
     }
 
     #[test]
