@@ -229,11 +229,7 @@ mod tests {
         let mut document = Document::new("brush swap");
         let layer_id = document.add_layer(Layer::new("ink"));
         document
-            .add_stroke(Stroke::new(
-                layer_id,
-                "ink",
-                vec![point(0.0, 0.0, 1.0)],
-            ))
+            .add_stroke(Stroke::new(layer_id, "ink", vec![point(0.0, 0.0, 1.0)]))
             .unwrap();
         let before = document.clone();
         let viewport = ScreenViewport::new(800.0, 600.0).unwrap();
@@ -241,7 +237,8 @@ mod tests {
         let mut thin = BrushLibrary::default();
         thin.insert(BrushDefinition::pencil("ink", "Thin", 4.0))
             .unwrap();
-        let thin_scene = build_render_scene(&document, Camera2D::default(), viewport, &thin).unwrap();
+        let thin_scene =
+            build_render_scene(&document, Camera2D::default(), viewport, &thin).unwrap();
 
         let mut thick = BrushLibrary::default();
         thick
