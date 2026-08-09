@@ -71,10 +71,16 @@ pub fn build_reveal_plan(
         branch: RevealBranch::Seed,
     }];
 
-    if matches!(direction, RevealDirection::TowardStart | RevealDirection::Both) {
+    if matches!(
+        direction,
+        RevealDirection::TowardStart | RevealDirection::Both
+    ) {
         append_toward_start(path, seed_node_index, &mut raw);
     }
-    if matches!(direction, RevealDirection::TowardEnd | RevealDirection::Both) {
+    if matches!(
+        direction,
+        RevealDirection::TowardEnd | RevealDirection::Both
+    ) {
         append_toward_end(path, seed_node_index, &mut raw);
     }
 
@@ -198,11 +204,7 @@ impl CameraTrack {
                     x: lerp(start.camera.x, end.camera.x, t),
                     y: lerp(start.camera.y, end.camera.y, t),
                     zoom: lerp(start.camera.zoom, end.camera.zoom, t),
-                    rotation_rad: lerp(
-                        start.camera.rotation_rad,
-                        end.camera.rotation_rad,
-                        t,
-                    ),
+                    rotation_rad: lerp(start.camera.rotation_rad, end.camera.rotation_rad, t),
                 };
             }
         }
@@ -264,8 +266,14 @@ mod tests {
             at_ms: 500,
             branch: RevealBranch::End,
         }));
-        assert!(plan.events.iter().any(|event| event.node_index == 0 && event.at_ms == 1000));
-        assert!(plan.events.iter().any(|event| event.node_index == 4 && event.at_ms == 1000));
+        assert!(plan
+            .events
+            .iter()
+            .any(|event| event.node_index == 0 && event.at_ms == 1000));
+        assert!(plan
+            .events
+            .iter()
+            .any(|event| event.node_index == 4 && event.at_ms == 1000));
     }
 
     #[test]
