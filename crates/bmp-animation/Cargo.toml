@@ -1,0 +1,11 @@
+[package]
+name = "bmp-animation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../bmp-core" }
+bmp-path = { path = "../bmp-path" }
+serde.workspace = true
+thiserror.workspace = true
