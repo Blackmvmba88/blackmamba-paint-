@@ -19,6 +19,7 @@ members = [
   "crates/bmp-render",
   "crates/bmp-reference",
   "crates/bmp-raster",
+  "crates/bmp-import",
 ]
 
 [workspace.package]
