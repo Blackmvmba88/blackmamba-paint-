@@ -289,8 +289,9 @@ fn perspective_ghost(
     Some(GhostSuggestion {
         id: Uuid::new_v4(),
         label: "Perspective X-Ray".into(),
-        explanation: "Shows inferred vanishing points/horizon evidence without modifying authored strokes."
-            .into(),
+        explanation:
+            "Shows inferred vanishing points/horizon evidence without modifying authored strokes."
+                .into(),
         confidence: solution.confidence,
         source_insight_ids: vec![insight.id],
         geometry_hint,
@@ -353,9 +354,10 @@ fn build_critique(insights: &[VisualInsight], do_not_touch: Vec<String>) -> Crit
             | InsightKind::Proportion
             | InsightKind::Anatomy => 0.9,
             InsightKind::Value | InsightKind::Edge | InsightKind::Color => 0.7,
-            InsightKind::Material | InsightKind::Style | InsightKind::Context | InsightKind::Fashion => {
-                0.5
-            }
+            InsightKind::Material
+            | InsightKind::Style
+            | InsightKind::Context
+            | InsightKind::Fashion => 0.5,
             InsightKind::Learning => 0.3,
         } * insight.confidence;
 
