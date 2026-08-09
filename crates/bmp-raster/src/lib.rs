@@ -85,18 +85,24 @@ mod tests {
         let decoded = decode_asset(&asset).unwrap();
         assert_eq!(decoded.width, 2);
         assert_eq!(decoded.height, 1);
-        assert_eq!(decoded.pixel(bmp_trace::PixelCoord::new(0, 0)).unwrap(), Rgba {
-            r: 255,
-            g: 0,
-            b: 0,
-            a: 255,
-        });
-        assert_eq!(decoded.pixel(bmp_trace::PixelCoord::new(1, 0)).unwrap(), Rgba {
-            r: 0,
-            g: 128,
-            b: 255,
-            a: 64,
-        });
+        assert_eq!(
+            decoded.pixel(bmp_trace::PixelCoord::new(0, 0)).unwrap(),
+            Rgba {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255,
+            }
+        );
+        assert_eq!(
+            decoded.pixel(bmp_trace::PixelCoord::new(1, 0)).unwrap(),
+            Rgba {
+                r: 0,
+                g: 128,
+                b: 255,
+                a: 64,
+            }
+        );
     }
 
     #[test]
