@@ -3,9 +3,10 @@ use bmp_core::{Document, Layer};
 use bmp_history::{DocumentHistory, HistoryError};
 use bmp_input::{PointerKind, PointerSample, StrokeCapture};
 use bmp_render::{build_render_scene, RenderDab, ScreenViewport};
-use bmp_storage::BmpaintPackage;
+use bmp_storage::{AssetBlob, BmpaintPackage};
 use bytemuck::{Pod, Zeroable};
 use std::{
+    collections::BTreeMap,
     error::Error,
     fs,
     path::{Path, PathBuf},
@@ -244,6 +245,7 @@ struct DesktopApp {
     window: Option<Arc<Window>>,
     gpu: Option<GpuState>,
     document: Document,
+    assets: BTreeMap<uuid::Uuid, AssetBlob>,
     history: DocumentHistory,
     layer_id: uuid::Uuid,
     brushes: BrushLibrary,
@@ -269,6 +271,7 @@ impl DesktopApp {
             window: None,
             gpu: None,
             document,
+            assets: BTreeMap::new(),
             history,
             layer_id,
             brushes,
@@ -382,9 +385,14 @@ impl DesktopApp {
         }
     }
 
+    fn package_snapshot(&self) -> BmpaintPackage {
+        let mut package = BmpaintPackage::from_document(self.document.clone());
+        package.assets = self.assets.clone();
+        package
+    }
+
     fn save_document_to(&self, path: &Path) -> Result<(), Box<dyn Error>> {
-        let package = BmpaintPackage::from_document(self.document.clone());
-        fs::write(path, package.encode()?)?;
+        fs::write(path, self.package_snapshot().encode()?)?;
         Ok(())
     }
 
@@ -392,6 +400,7 @@ impl DesktopApp {
         let bytes = fs::read(path)?;
         let package = BmpaintPackage::decode(&bytes)?;
         self.document = package.document;
+        self.assets = package.assets;
         self.ensure_active_layer();
         self.history = DocumentHistory::new(&self.document)?;
         self.capture = None;
