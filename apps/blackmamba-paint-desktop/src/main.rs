@@ -1,14 +1,23 @@
 use bmp_brush::{BrushDefinition, BrushLibrary};
 use bmp_core::{Document, Layer};
+use bmp_history::{DocumentHistory, HistoryError};
 use bmp_input::{PointerKind, PointerSample, StrokeCapture};
 use bmp_render::{build_render_scene, RenderDab, ScreenViewport};
+use bmp_storage::BmpaintPackage;
 use bytemuck::{Pod, Zeroable};
-use std::{error::Error, sync::Arc, time::Instant};
+use std::{
+    error::Error,
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 use wgpu::util::DeviceExt;
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    keyboard::{KeyCode, ModifiersState, PhysicalKey},
     window::{Window, WindowId},
 };
 
@@ -138,12 +147,33 @@ impl GpuState {
         self.surface.configure(&self.device, &self.config);
     }
 
-    fn render(&mut self, document: &Document, brushes: &BrushLibrary) -> FrameStatus {
+    fn render(
+        &mut self,
+        document: &Document,
+        brushes: &BrushLibrary,
+        preview: Option<&StrokeCapture>,
+    ) -> FrameStatus {
+        let preview_document = preview.and_then(|capture| {
+            let stroke = capture.clone().finish();
+            if stroke.points.is_empty() {
+                return None;
+            }
+            let mut candidate = document.clone();
+            candidate.add_stroke(stroke).ok()?;
+            Some(candidate)
+        });
+        let render_document = preview_document.as_ref().unwrap_or(document);
+
         let viewport =
             ScreenViewport::new(f64::from(self.config.width), f64::from(self.config.height))
                 .expect("configured GPU surface has positive dimensions");
-        let scene = build_render_scene(document, document.camera, viewport, brushes)
-            .expect("document camera and viewport are valid");
+        let scene = build_render_scene(
+            render_document,
+            render_document.camera,
+            viewport,
+            brushes,
+        )
+        .expect("document camera and viewport are valid");
         let vertices = dabs_to_vertices(&scene.dabs, viewport);
 
         let (frame, suboptimal) = match self.surface.get_current_texture() {
@@ -219,11 +249,14 @@ struct DesktopApp {
     window: Option<Arc<Window>>,
     gpu: Option<GpuState>,
     document: Document,
+    history: DocumentHistory,
     layer_id: uuid::Uuid,
     brushes: BrushLibrary,
     capture: Option<StrokeCapture>,
     cursor: Option<(f64, f64)>,
     right_drag: bool,
+    modifiers: ModifiersState,
+    work_path: PathBuf,
     started_at: Instant,
 }
 
@@ -231,6 +264,7 @@ impl DesktopApp {
     fn new() -> Self {
         let mut document = Document::new("BlackMamba Paint — Desktop Canvas");
         let layer_id = document.add_layer(Layer::new("ink"));
+        let history = DocumentHistory::new(&document).expect("new document can enter history");
         let mut brushes = BrushLibrary::default();
         brushes
             .insert(BrushDefinition::pencil("graphite", "Graphite", 8.0))
@@ -240,11 +274,14 @@ impl DesktopApp {
             window: None,
             gpu: None,
             document,
+            history,
             layer_id,
             brushes,
             capture: None,
             cursor: None,
             right_drag: false,
+            modifiers: ModifiersState::empty(),
+            work_path: PathBuf::from("blackmamba-work.bmpaint"),
             started_at: Instant::now(),
         }
     }
@@ -300,6 +337,105 @@ impl DesktopApp {
     fn zoom_by(&mut self, steps: f64) {
         let factor = 1.1_f64.powf(steps.clamp(-20.0, 20.0));
         self.document.camera.zoom = (self.document.camera.zoom * factor).clamp(0.02, 5_000.0);
+    }
+
+    fn ensure_active_layer(&mut self) {
+        if self.document.layers.iter().any(|layer| layer.id == self.layer_id) {
+            return;
+        }
+        if let Some(layer) = self.document.layers.first() {
+            self.layer_id = layer.id;
+        } else {
+            self.layer_id = self.document.add_layer(Layer::new("ink"));
+        }
+    }
+
+    fn commit_finished_stroke(&mut self, capture: StrokeCapture) {
+        let stroke = capture.finish();
+        if stroke.points.is_empty() {
+            return;
+        }
+        match self.document.add_stroke(stroke) {
+            Ok(_) => {
+                if let Err(error) = self.history.commit(&self.document) {
+                    eprintln!("failed to record history: {error}");
+                }
+            }
+            Err(error) => eprintln!("failed to commit stroke: {error}"),
+        }
+    }
+
+    fn undo(&mut self) {
+        match self.history.undo() {
+            Ok(document) => {
+                self.document = document;
+                self.ensure_active_layer();
+            }
+            Err(HistoryError::NothingToUndo) => {}
+            Err(error) => eprintln!("undo failed: {error}"),
+        }
+    }
+
+    fn redo(&mut self) {
+        match self.history.redo() {
+            Ok(document) => {
+                self.document = document;
+                self.ensure_active_layer();
+            }
+            Err(HistoryError::NothingToRedo) => {}
+            Err(error) => eprintln!("redo failed: {error}"),
+        }
+    }
+
+    fn save_document_to(&self, path: &Path) -> Result<(), Box<dyn Error>> {
+        let package = BmpaintPackage::from_document(self.document.clone());
+        fs::write(path, package.encode()?)?;
+        Ok(())
+    }
+
+    fn open_document_from(&mut self, path: &Path) -> Result<(), Box<dyn Error>> {
+        let bytes = fs::read(path)?;
+        let package = BmpaintPackage::decode(&bytes)?;
+        self.document = package.document;
+        self.ensure_active_layer();
+        self.history = DocumentHistory::new(&self.document)?;
+        self.capture = None;
+        Ok(())
+    }
+
+    fn save_working_document(&self) {
+        if let Err(error) = self.save_document_to(&self.work_path) {
+            eprintln!("save failed for {}: {error}", self.work_path.display());
+        }
+    }
+
+    fn open_working_document(&mut self) {
+        let path = self.work_path.clone();
+        if let Err(error) = self.open_document_from(&path) {
+            eprintln!("open failed for {}: {error}", path.display());
+        }
+    }
+
+    fn command_modifier(&self) -> bool {
+        self.modifiers.control_key() || self.modifiers.super_key()
+    }
+
+    fn handle_key_press(&mut self, key: PhysicalKey) {
+        if !self.command_modifier() {
+            if key == PhysicalKey::Code(KeyCode::Escape) {
+                self.capture = None;
+            }
+            return;
+        }
+
+        match key {
+            PhysicalKey::Code(KeyCode::KeyZ) if self.modifiers.shift_key() => self.redo(),
+            PhysicalKey::Code(KeyCode::KeyZ) => self.undo(),
+            PhysicalKey::Code(KeyCode::KeyY) => self.redo(),
+            PhysicalKey::Code(KeyCode::KeyS) => self.save_working_document(),
+            PhysicalKey::Code(KeyCode::KeyO) => self.open_working_document(),
+            _ => {}
+        }
     }
 }
 
@@ -381,12 +517,7 @@ impl ApplicationHandler for DesktopApp {
                 }
                 (ElementState::Released, MouseButton::Left) => {
                     if let Some(capture) = self.capture.take() {
-                        let stroke = capture.finish();
-                        if !stroke.points.is_empty() {
-                            if let Err(error) = self.document.add_stroke(stroke) {
-                                eprintln!("failed to commit stroke: {error}");
-                            }
-                        }
+                        self.commit_finished_stroke(capture);
                     }
                     self.request_redraw();
                 }
@@ -402,10 +533,29 @@ impl ApplicationHandler for DesktopApp {
                 self.zoom_by(steps);
                 self.request_redraw();
             }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.modifiers = modifiers.state();
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                if event.state == ElementState::Pressed && !event.repeat {
+                    self.handle_key_press(event.physical_key);
+                    self.request_redraw();
+                }
+            }
+            WindowEvent::DroppedFile(path) => {
+                if path.extension().and_then(|extension| extension.to_str()) == Some("bmpaint") {
+                    if let Err(error) = self.open_document_from(&path) {
+                        eprintln!("failed to open dropped file {}: {error}", path.display());
+                    } else {
+                        self.work_path = path;
+                    }
+                    self.request_redraw();
+                }
+            }
             WindowEvent::RedrawRequested => {
                 let mut redraw_after_gpu = false;
                 if let Some(gpu) = &mut self.gpu {
-                    match gpu.render(&self.document, &self.brushes) {
+                    match gpu.render(&self.document, &self.brushes, self.capture.as_ref()) {
                         FrameStatus::Presented | FrameStatus::Skipped => {}
                         FrameStatus::PresentedSuboptimal | FrameStatus::Reconfigure => {
                             gpu.reconfigure();
