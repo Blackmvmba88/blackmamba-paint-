@@ -357,15 +357,12 @@ impl ApplicationHandler for DesktopApp {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 let next = (position.x, position.y);
-                if let Some(previous) = self.cursor {
-                    if self.right_drag {
-                        self.pan_by_screen_delta(next.0 - previous.0, next.1 - previous.1);
-                    }
+                if self.right_drag && let Some(previous) = self.cursor {
+                    self.pan_by_screen_delta(next.0 - previous.0, next.1 - previous.1);
                 }
-                if let Some(sample) = self.pointer_sample(next.0, next.1) {
-                    if let Some(capture) = &mut self.capture {
-                        capture.push(sample);
-                    }
+                let sample = self.pointer_sample(next.0, next.1);
+                if let (Some(sample), Some(capture)) = (sample, self.capture.as_mut()) {
+                    capture.push(sample);
                 }
                 self.cursor = Some(next);
                 self.request_redraw();
@@ -373,18 +370,20 @@ impl ApplicationHandler for DesktopApp {
             WindowEvent::MouseInput { state, button, .. } => match (state, button) {
                 (ElementState::Pressed, MouseButton::Left) => {
                     let mut capture = StrokeCapture::begin(self.layer_id, "graphite");
-                    if let Some((x, y)) = self.cursor {
-                        if let Some(sample) = self.pointer_sample(x, y) {
-                            capture.push(sample);
-                        }
+                    if let Some((x, y)) = self.cursor
+                        && let Some(sample) = self.pointer_sample(x, y)
+                    {
+                        capture.push(sample);
                     }
                     self.capture = Some(capture);
                 }
                 (ElementState::Released, MouseButton::Left) => {
                     if let Some(capture) = self.capture.take() {
                         let stroke = capture.finish();
-                        if !stroke.points.is_empty() {
-                            let _ = self.document.add_stroke(stroke);
+                        if !stroke.points.is_empty()
+                            && let Err(error) = self.document.add_stroke(stroke)
+                        {
+                            eprintln!("failed to commit stroke: {error}");
                         }
                     }
                     self.request_redraw();
