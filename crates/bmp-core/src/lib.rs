@@ -93,21 +93,11 @@ pub struct IntentLocks {
     pub flexible: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct AiSessionContext {
     pub artist_intent: Option<String>,
     pub intent_locks: IntentLocks,
     pub active_reference_ids: Vec<Uuid>,
-}
-
-impl Default for AiSessionContext {
-    fn default() -> Self {
-        Self {
-            artist_intent: None,
-            intent_locks: IntentLocks::default(),
-            active_reference_ids: Vec::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
