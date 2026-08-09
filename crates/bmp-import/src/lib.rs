@@ -14,7 +14,12 @@ pub struct ImportPlacement {
 }
 
 impl ImportPlacement {
-    pub fn centered(center_x: f64, center_y: f64, max_world_width: f64, max_world_height: f64) -> Self {
+    pub fn centered(
+        center_x: f64,
+        center_y: f64,
+        max_world_width: f64,
+        max_world_height: f64,
+    ) -> Self {
         Self {
             center_x,
             center_y,
@@ -53,13 +58,8 @@ pub fn import_raster_reference(
         .min(placement.max_world_height / source_height)
         .min(1.0);
 
-    let mut reference = RasterReference::new(
-        asset.id,
-        name,
-        media_type,
-        decoded.width,
-        decoded.height,
-    );
+    let mut reference =
+        RasterReference::new(asset.id, name, media_type, decoded.width, decoded.height);
     reference.center_x = placement.center_x;
     reference.center_y = placement.center_y;
     reference.world_width = source_width * scale;
