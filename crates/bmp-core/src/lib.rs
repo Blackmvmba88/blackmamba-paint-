@@ -113,6 +113,8 @@ pub struct RasterReference {
     pub rotation_rad: f64,
     pub opacity: f32,
     pub visible: bool,
+    #[serde(default)]
+    pub z_index: i64,
 }
 
 impl RasterReference {
@@ -139,6 +141,7 @@ impl RasterReference {
             rotation_rad: 0.0,
             opacity: 1.0,
             visible: true,
+            z_index: 0,
         }
     }
 }
@@ -312,13 +315,15 @@ mod tests {
         let layer_id = doc.add_layer(layer);
         doc.add_stroke(Stroke::new(layer_id, "graphite", vec![]))
             .unwrap();
-        let reference_id = doc.add_raster_reference(RasterReference::new(
+        let mut reference = RasterReference::new(
             Uuid::new_v4(),
             "ref.png",
             "image/png",
             2048,
             1024,
-        ));
+        );
+        reference.z_index = 7;
+        let reference_id = doc.add_raster_reference(reference);
         let path = EditablePath::from_polyline([
             Vec2::new(98_500_000.0, -12_100_000.0),
             Vec2::new(98_500_050.0, -12_100_020.0),
@@ -339,6 +344,7 @@ mod tests {
         let json = doc.to_json_pretty().unwrap();
         let restored = Document::from_json(&json).unwrap();
         assert_eq!(doc, restored);
+        assert_eq!(restored.raster_references[&reference_id].z_index, 7);
     }
 
     #[test]
@@ -388,5 +394,24 @@ mod tests {
             .layers
             .values()
             .all(|layer| layer.path_ids.is_empty()));
+    }
+
+    #[test]
+    fn legacy_reference_without_z_index_defaults_to_zero() {
+        let mut document = Document::new("legacy reference");
+        let reference_id = document.add_raster_reference(RasterReference::new(
+            Uuid::new_v4(),
+            "legacy.png",
+            "image/png",
+            16,
+            16,
+        ));
+        let mut value = serde_json::to_value(document).unwrap();
+        value["raster_references"][reference_id.to_string()]
+            .as_object_mut()
+            .unwrap()
+            .remove("z_index");
+        let restored = Document::from_json(&value.to_string()).unwrap();
+        assert_eq!(restored.raster_references[&reference_id].z_index, 0);
     }
 }
