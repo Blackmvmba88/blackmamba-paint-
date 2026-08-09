@@ -9,3 +9,6 @@ bmp-core = { path = "../bmp-core" }
 bmp-path = { path = "../bmp-path" }
 serde.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+bmp-trace = { path = "../bmp-trace" }
