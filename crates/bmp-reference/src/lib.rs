@@ -85,10 +85,14 @@ pub fn editable_path_to_world(
     for node in &mut transformed.nodes {
         node.position = world_point_as_vec2(pixel_space_to_world(reference, node.position)?);
         if let Some(handle) = node.in_handle {
-            node.in_handle = Some(world_point_as_vec2(pixel_space_to_world(reference, handle)?));
+            node.in_handle = Some(world_point_as_vec2(pixel_space_to_world(
+                reference, handle,
+            )?));
         }
         if let Some(handle) = node.out_handle {
-            node.out_handle = Some(world_point_as_vec2(pixel_space_to_world(reference, handle)?));
+            node.out_handle = Some(world_point_as_vec2(pixel_space_to_world(
+                reference, handle,
+            )?));
         }
     }
     Ok(transformed)
