@@ -10,3 +10,6 @@ bmp-raster = { path = "../bmp-raster" }
 bmp-storage = { path = "../bmp-storage" }
 thiserror.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+image = { version = "0.25.10", default-features = false, features = ["png"] }
