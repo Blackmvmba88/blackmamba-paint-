@@ -17,6 +17,7 @@ members = [
   "crates/bmp-knowledge",
   "crates/bmp-brush",
   "crates/bmp-render",
+  "crates/bmp-reference",
 ]
 
 [workspace.package]
