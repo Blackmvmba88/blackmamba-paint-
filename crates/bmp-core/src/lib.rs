@@ -58,6 +58,51 @@ impl Layer {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RasterReference {
+    pub id: Uuid,
+    pub asset_id: Uuid,
+    pub name: String,
+    pub media_type: String,
+    pub pixel_width: u32,
+    pub pixel_height: u32,
+    pub center_x: f64,
+    pub center_y: f64,
+    pub world_width: f64,
+    pub world_height: f64,
+    pub rotation_rad: f64,
+    pub opacity: f32,
+    pub visible: bool,
+}
+
+impl RasterReference {
+    pub fn new(
+        asset_id: Uuid,
+        name: impl Into<String>,
+        media_type: impl Into<String>,
+        pixel_width: u32,
+        pixel_height: u32,
+    ) -> Self {
+        let safe_width = pixel_width.max(1);
+        let safe_height = pixel_height.max(1);
+        Self {
+            id: Uuid::new_v4(),
+            asset_id,
+            name: name.into(),
+            media_type: media_type.into(),
+            pixel_width: safe_width,
+            pixel_height: safe_height,
+            center_x: 0.0,
+            center_y: 0.0,
+            world_width: f64::from(safe_width),
+            world_height: f64::from(safe_height),
+            rotation_rad: 0.0,
+            opacity: 1.0,
+            visible: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum ProjectionMode {
     Flat,
@@ -108,6 +153,8 @@ pub struct Document {
     pub camera: Camera2D,
     pub layers: BTreeMap<Uuid, Layer>,
     pub strokes: BTreeMap<Uuid, Stroke>,
+    #[serde(default)]
+    pub raster_references: BTreeMap<Uuid, RasterReference>,
     pub ai: AiSessionContext,
 }
 
@@ -120,6 +167,7 @@ impl Document {
             camera: Camera2D::default(),
             layers: BTreeMap::new(),
             strokes: BTreeMap::new(),
+            raster_references: BTreeMap::new(),
             ai: AiSessionContext::default(),
         }
     }
@@ -140,6 +188,12 @@ impl Document {
         layer.stroke_ids.push(id);
         self.strokes.insert(id, stroke);
         Ok(id)
+    }
+
+    pub fn add_raster_reference(&mut self, reference: RasterReference) -> Uuid {
+        let id = reference.id;
+        self.raster_references.insert(id, reference);
+        id
     }
 
     pub fn to_json_pretty(&self) -> Result<String, DocumentError> {
@@ -203,9 +257,24 @@ mod tests {
         let layer_id = doc.add_layer(layer);
         doc.add_stroke(Stroke::new(layer_id, "graphite", vec![]))
             .unwrap();
+        let asset_id = Uuid::new_v4();
+        let mut reference = RasterReference::new(asset_id, "ref.png", "image/png", 2048, 1024);
+        reference.center_x = 98_500_000.0;
+        reference.center_y = -12_100_000.0;
+        reference.rotation_rad = 0.25;
+        doc.add_raster_reference(reference);
 
         let json = doc.to_json_pretty().unwrap();
         let restored = Document::from_json(&json).unwrap();
         assert_eq!(doc, restored);
+    }
+
+    #[test]
+    fn legacy_document_without_raster_references_still_loads() {
+        let doc = Document::new("legacy");
+        let mut value = serde_json::to_value(doc).unwrap();
+        value.as_object_mut().unwrap().remove("raster_references");
+        let restored = Document::from_json(&value.to_string()).unwrap();
+        assert!(restored.raster_references.is_empty());
     }
 }
