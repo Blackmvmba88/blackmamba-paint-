@@ -1,3 +1,4 @@
+use bmp_path::EditablePath;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -45,6 +46,8 @@ pub struct Layer {
     pub name: String,
     pub visible: bool,
     pub stroke_ids: Vec<Uuid>,
+    #[serde(default)]
+    pub path_ids: Vec<Uuid>,
 }
 
 impl Layer {
@@ -54,7 +57,44 @@ impl Layer {
             name: name.into(),
             visible: true,
             stroke_ids: Vec::new(),
+            path_ids: Vec::new(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum PathOrigin {
+    Manual,
+    TracePulse {
+        reference_id: Uuid,
+        seed_pixel_x: u32,
+        seed_pixel_y: u32,
+        seed_node_index: usize,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PathObject {
+    pub layer_id: Uuid,
+    pub geometry: EditablePath,
+    pub brush_id: Option<String>,
+    pub visible: bool,
+    pub origin: PathOrigin,
+}
+
+impl PathObject {
+    pub fn new(layer_id: Uuid, geometry: EditablePath, origin: PathOrigin) -> Self {
+        Self {
+            layer_id,
+            geometry,
+            brush_id: None,
+            visible: true,
+            origin,
+        }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.geometry.id
     }
 }
 
@@ -154,6 +194,8 @@ pub struct Document {
     pub layers: BTreeMap<Uuid, Layer>,
     pub strokes: BTreeMap<Uuid, Stroke>,
     #[serde(default)]
+    pub paths: BTreeMap<Uuid, PathObject>,
+    #[serde(default)]
     pub raster_references: BTreeMap<Uuid, RasterReference>,
     pub ai: AiSessionContext,
 }
@@ -167,6 +209,7 @@ impl Document {
             camera: Camera2D::default(),
             layers: BTreeMap::new(),
             strokes: BTreeMap::new(),
+            paths: BTreeMap::new(),
             raster_references: BTreeMap::new(),
             ai: AiSessionContext::default(),
         }
@@ -187,6 +230,17 @@ impl Document {
         let id = stroke.id;
         layer.stroke_ids.push(id);
         self.strokes.insert(id, stroke);
+        Ok(id)
+    }
+
+    pub fn add_path(&mut self, path: PathObject) -> Result<Uuid, DocumentError> {
+        let layer = self
+            .layers
+            .get_mut(&path.layer_id)
+            .ok_or(DocumentError::MissingLayer(path.layer_id))?;
+        let id = path.id();
+        layer.path_ids.push(id);
+        self.paths.insert(id, path);
         Ok(id)
     }
 
@@ -218,6 +272,7 @@ pub enum DocumentError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bmp_path::{EditablePath, Vec2};
 
     #[test]
     fn stroke_is_time_native() {
@@ -257,12 +312,29 @@ mod tests {
         let layer_id = doc.add_layer(layer);
         doc.add_stroke(Stroke::new(layer_id, "graphite", vec![]))
             .unwrap();
-        let asset_id = Uuid::new_v4();
-        let mut reference = RasterReference::new(asset_id, "ref.png", "image/png", 2048, 1024);
-        reference.center_x = 98_500_000.0;
-        reference.center_y = -12_100_000.0;
-        reference.rotation_rad = 0.25;
-        doc.add_raster_reference(reference);
+        let reference_id = doc.add_raster_reference(RasterReference::new(
+            Uuid::new_v4(),
+            "ref.png",
+            "image/png",
+            2048,
+            1024,
+        ));
+        let path = EditablePath::from_polyline([
+            Vec2::new(98_500_000.0, -12_100_000.0),
+            Vec2::new(98_500_050.0, -12_100_020.0),
+        ]);
+        let mut object = PathObject::new(
+            layer_id,
+            path,
+            PathOrigin::TracePulse {
+                reference_id,
+                seed_pixel_x: 31,
+                seed_pixel_y: 44,
+                seed_node_index: 1,
+            },
+        );
+        object.brush_id = Some("ink".into());
+        doc.add_path(object).unwrap();
 
         let json = doc.to_json_pretty().unwrap();
         let restored = Document::from_json(&json).unwrap();
@@ -270,11 +342,51 @@ mod tests {
     }
 
     #[test]
-    fn legacy_document_without_raster_references_still_loads() {
-        let doc = Document::new("legacy");
-        let mut value = serde_json::to_value(doc).unwrap();
-        value.as_object_mut().unwrap().remove("raster_references");
+    fn path_is_owned_by_layer_and_preserves_tracepulse_seed() {
+        let mut document = Document::new("trace path");
+        let layer_id = document.add_layer(Layer::new("trace"));
+        let reference_id = Uuid::new_v4();
+        let path = EditablePath::from_polyline([Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0)]);
+        let object = PathObject::new(
+            layer_id,
+            path,
+            PathOrigin::TracePulse {
+                reference_id,
+                seed_pixel_x: 7,
+                seed_pixel_y: 9,
+                seed_node_index: 1,
+            },
+        );
+        let path_id = document.add_path(object).unwrap();
+
+        assert_eq!(document.layers[&layer_id].path_ids, vec![path_id]);
+        assert!(matches!(
+            document.paths[&path_id].origin,
+            PathOrigin::TracePulse {
+                reference_id: id,
+                seed_pixel_x: 7,
+                seed_pixel_y: 9,
+                seed_node_index: 1,
+            } if id == reference_id
+        ));
+    }
+
+    #[test]
+    fn legacy_document_without_paths_still_loads() {
+        let mut document = Document::new("legacy");
+        document.add_layer(Layer::new("ink"));
+        let mut value = serde_json::to_value(document).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("paths");
+        for layer in object["layers"].as_object_mut().unwrap().values_mut() {
+            layer.as_object_mut().unwrap().remove("path_ids");
+        }
+
         let restored = Document::from_json(&value.to_string()).unwrap();
-        assert!(restored.raster_references.is_empty());
+        assert!(restored.paths.is_empty());
+        assert!(restored
+            .layers
+            .values()
+            .all(|layer| layer.path_ids.is_empty()));
     }
 }
