@@ -163,7 +163,8 @@ impl PerspectiveInference for GeometricPerspectiveInference {
             return result;
         }
 
-        let mut clusters = cluster_intersections(&intersections, self.config.cluster_radius.max(0.0));
+        let mut clusters =
+            cluster_intersections(&intersections, self.config.cluster_radius.max(0.0));
         clusters.retain(|cluster| cluster.support >= self.config.min_cluster_support.max(1));
 
         if clusters.is_empty() {
@@ -202,10 +203,7 @@ impl PerspectiveInference for GeometricPerspectiveInference {
             .collect::<Vec<_>>();
 
         let horizon = infer_horizon(&vanishing_points, self.config.cluster_radius);
-        let vp_confidence = vanishing_points
-            .iter()
-            .map(|vp| vp.confidence)
-            .sum::<f32>()
+        let vp_confidence = vanishing_points.iter().map(|vp| vp.confidence).sum::<f32>()
             / vanishing_points.len() as f32;
         let horizon_bonus = horizon.map_or(0.0, |value| value.confidence * 0.25);
         let support_coverage = clusters
@@ -273,7 +271,8 @@ fn pairwise_intersections(lines: &[LineObservation], epsilon: f64) -> Vec<Inters
     let mut output = Vec::new();
     for left_index in 0..lines.len() {
         for right_index in left_index + 1..lines.len() {
-            if let Some((x, y)) = line_intersection(lines[left_index], lines[right_index], epsilon) {
+            if let Some((x, y)) = line_intersection(lines[left_index], lines[right_index], epsilon)
+            {
                 let weight = f64::from(
                     lines[left_index]
                         .weight
@@ -426,8 +425,8 @@ mod tests {
             LineObservation::new(0.0, 10.0, 100.0, 10.0),
             LineObservation::new(0.0, 20.0, 100.0, 20.0),
         ];
-        let result = GeometricPerspectiveInference::default()
-            .infer(&lines, ProjectionMode::InfiniteFlat);
+        let result =
+            GeometricPerspectiveInference::default().infer(&lines, ProjectionMode::InfiniteFlat);
 
         assert!(result.vanishing_points.is_empty());
         assert!(result.horizon.is_none());
