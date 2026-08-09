@@ -155,7 +155,8 @@ mod tests {
     use uuid::Uuid;
 
     fn reference() -> RasterReference {
-        let mut reference = RasterReference::new(Uuid::new_v4(), "reference.png", "image/png", 100, 50);
+        let mut reference =
+            RasterReference::new(Uuid::new_v4(), "reference.png", "image/png", 100, 50);
         reference.center_x = 1_000.0;
         reference.center_y = -2_000.0;
         reference.world_width = 200.0;
