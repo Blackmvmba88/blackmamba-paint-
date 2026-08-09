@@ -12,3 +12,5 @@ bmp-space = { path = "../../crates/bmp-space" }
 bmp-history = { path = "../../crates/bmp-history" }
 bmp-storage = { path = "../../crates/bmp-storage" }
 bmp-input = { path = "../../crates/bmp-input" }
+bmp-brush = { path = "../../crates/bmp-brush" }
+bmp-render = { path = "../../crates/bmp-render" }

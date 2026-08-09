@@ -1,0 +1,13 @@
+[package]
+name = "bmp-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../bmp-core" }
+bmp-brush = { path = "../bmp-brush" }
+bmp-space = { path = "../bmp-space" }
+serde.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
