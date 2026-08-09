@@ -10,3 +10,4 @@ bmp-storage = { path = "../bmp-storage" }
 bmp-trace = { path = "../bmp-trace" }
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
 thiserror.workspace = true
+uuid.workspace = true
