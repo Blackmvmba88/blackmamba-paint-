@@ -9,6 +9,7 @@ bmp-core = { path = "../../crates/bmp-core" }
 bmp-input = { path = "../../crates/bmp-input" }
 bmp-brush = { path = "../../crates/bmp-brush" }
 bmp-render = { path = "../../crates/bmp-render" }
+uuid.workspace = true
 winit = "0.30.13"
 wgpu = "30.0.0"
 pollster = "0.4"
