@@ -273,10 +273,7 @@ mod tests {
     fn legacy_document_without_raster_references_still_loads() {
         let doc = Document::new("legacy");
         let mut value = serde_json::to_value(doc).unwrap();
-        value
-            .as_object_mut()
-            .unwrap()
-            .remove("raster_references");
+        value.as_object_mut().unwrap().remove("raster_references");
         let restored = Document::from_json(&value.to_string()).unwrap();
         assert!(restored.raster_references.is_empty());
     }
