@@ -156,6 +156,9 @@ mod tests {
         );
 
         assert_eq!(doc, before);
-        assert_eq!(result.critique.do_not_touch, vec!["silhouette", "expression"]);
+        assert_eq!(
+            result.critique.do_not_touch,
+            vec!["silhouette", "expression"]
+        );
     }
 }
