@@ -53,8 +53,11 @@ pub struct LineObservation {
 /// Contract for automatic or assisted perspective inference.
 /// A deterministic geometric implementation can live beside an AI-assisted one.
 pub trait PerspectiveInference {
-    fn infer(&self, lines: &[LineObservation], projection_hint: ProjectionMode)
-        -> PerspectiveSolution;
+    fn infer(
+        &self,
+        lines: &[LineObservation],
+        projection_hint: ProjectionMode,
+    ) -> PerspectiveSolution;
 }
 
 #[derive(Debug, Default)]
