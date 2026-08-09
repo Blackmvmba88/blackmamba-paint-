@@ -402,17 +402,21 @@ impl ApplicationHandler for DesktopApp {
                 self.request_redraw();
             }
             WindowEvent::RedrawRequested => {
+                let mut redraw_after_gpu = false;
                 if let Some(gpu) = &mut self.gpu {
                     match gpu.render(&self.document, &self.brushes) {
                         FrameStatus::Presented | FrameStatus::Skipped => {}
                         FrameStatus::PresentedSuboptimal | FrameStatus::Reconfigure => {
                             gpu.reconfigure();
-                            self.request_redraw();
+                            redraw_after_gpu = true;
                         }
                         FrameStatus::Validation => {
                             eprintln!("surface presentation validation warning");
                         }
                     }
+                }
+                if redraw_after_gpu {
+                    self.request_redraw();
                 }
             }
             _ => {}
