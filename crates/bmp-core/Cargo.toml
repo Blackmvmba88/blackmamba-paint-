@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+bmp-path = { path = "../bmp-path" }
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
