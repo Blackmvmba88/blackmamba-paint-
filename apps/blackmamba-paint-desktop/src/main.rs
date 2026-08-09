@@ -33,6 +33,15 @@ impl GpuVertex {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrameStatus {
+    Presented,
+    PresentedSuboptimal,
+    Skipped,
+    Reconfigure,
+    Validation,
+}
+
 struct GpuState {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -50,6 +59,7 @@ impl GpuState {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
+                apply_limit_buckets: false,
             })
             .await?;
         let (device, queue) = adapter
@@ -128,11 +138,7 @@ impl GpuState {
         self.surface.configure(&self.device, &self.config);
     }
 
-    fn render(
-        &mut self,
-        document: &Document,
-        brushes: &BrushLibrary,
-    ) -> Result<(), wgpu::SurfaceError> {
+    fn render(&mut self, document: &Document, brushes: &BrushLibrary) -> FrameStatus {
         let viewport =
             ScreenViewport::new(f64::from(self.config.width), f64::from(self.config.height))
                 .expect("configured GPU surface has positive dimensions");
@@ -140,7 +146,18 @@ impl GpuState {
             .expect("document camera and viewport are valid");
         let vertices = dabs_to_vertices(&scene.dabs, viewport);
 
-        let frame = self.surface.get_current_texture()?;
+        let (frame, suboptimal) = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(frame) => (frame, false),
+            wgpu::CurrentSurfaceTexture::Suboptimal(frame) => (frame, true),
+            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+                return FrameStatus::Skipped;
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                return FrameStatus::Reconfigure;
+            }
+            wgpu::CurrentSurfaceTexture::Validation => return FrameStatus::Validation,
+        };
+
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -188,8 +205,13 @@ impl GpuState {
         }
 
         self.queue.submit(Some(encoder.finish()));
-        frame.present();
-        Ok(())
+        self.queue.present(frame);
+
+        if suboptimal {
+            FrameStatus::PresentedSuboptimal
+        } else {
+            FrameStatus::Presented
+        }
     }
 }
 
@@ -382,13 +404,14 @@ impl ApplicationHandler for DesktopApp {
             WindowEvent::RedrawRequested => {
                 if let Some(gpu) = &mut self.gpu {
                     match gpu.render(&self.document, &self.brushes) {
-                        Ok(()) => {}
-                        Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
-                        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        FrameStatus::Presented | FrameStatus::Skipped => {}
+                        FrameStatus::PresentedSuboptimal | FrameStatus::Reconfigure => {
                             gpu.reconfigure();
                             self.request_redraw();
                         }
-                        Err(error) => eprintln!("surface presentation warning: {error}"),
+                        FrameStatus::Validation => {
+                            eprintln!("surface presentation validation warning");
+                        }
                     }
                 }
             }
