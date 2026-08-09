@@ -12,6 +12,7 @@ members = [
   "crates/bmp-path",
   "crates/bmp-trace",
   "crates/bmp-animation",
+  "crates/bmp-projection",
 ]
 
 [workspace.package]
