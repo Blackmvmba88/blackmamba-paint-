@@ -1,8 +1,12 @@
-use bmp_ai::{AnalysisRequest, InsightKind, MockVisualIntelligence, VisualIntelligence};
+use bmp_ai::{
+    AnalysisRequest, DeterministicVisualIntelligence, InsightKind, VisualIntelligence,
+};
+use bmp_brush::{BrushDefinition, BrushLibrary};
 use bmp_core::{Document, Layer};
 use bmp_history::DocumentHistory;
 use bmp_input::{PointerKind, PointerSample, StrokeCapture};
 use bmp_perspective::{LineObservation, PerspectiveInference, StubPerspectiveInference};
+use bmp_render::{build_render_scene, ScreenViewport};
 use bmp_space::{Bounds, SparseSpatialIndex};
 use bmp_storage::BmpaintPackage;
 
@@ -54,7 +58,19 @@ fn main() {
         .expect(".bmpaint should decode")
         .document;
 
-    let ai = MockVisualIntelligence;
+    let mut brushes = BrushLibrary::default();
+    brushes
+        .insert(BrushDefinition::pencil("graphite", "Graphite", 12.0))
+        .expect("brush should register");
+    let render_scene = build_render_scene(
+        &restored,
+        restored.camera,
+        ScreenViewport::new(1280.0, 720.0).expect("viewport should be valid"),
+        &brushes,
+    )
+    .expect("render scene should build");
+
+    let ai = DeterministicVisualIntelligence::default();
     let analysis = ai.analyze(
         &restored,
         &AnalysisRequest {
@@ -79,10 +95,11 @@ fn main() {
         restored.projection,
     );
 
-    println!("BlackMamba Paint First Stroke online");
+    println!("BlackMamba Paint pipeline online");
     println!("visible objects: {}", visible.len());
     println!("strokes after undo: {}", undone.strokes.len());
     println!("strokes after redo/load: {}", restored.strokes.len());
+    println!("render dabs: {}", render_scene.dabs.len());
     println!(".bmpaint bytes: {}", bytes.len());
     println!("ai insights: {}", analysis.insights.len());
     println!("perspective confidence: {:.2}", perspective.confidence);
