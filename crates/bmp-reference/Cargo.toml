@@ -8,3 +8,4 @@ license.workspace = true
 bmp-core = { path = "../bmp-core" }
 bmp-trace = { path = "../bmp-trace" }
 thiserror.workspace = true
+uuid.workspace = true
