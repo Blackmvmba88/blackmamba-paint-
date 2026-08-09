@@ -16,11 +16,7 @@ pub struct AssetBlob {
 }
 
 impl AssetBlob {
-    pub fn new(
-        name: impl Into<String>,
-        media_type: impl Into<String>,
-        bytes: Vec<u8>,
-    ) -> Self {
+    pub fn new(name: impl Into<String>, media_type: impl Into<String>, bytes: Vec<u8>) -> Self {
         Self {
             id: Uuid::new_v4(),
             name: name.into(),
@@ -153,7 +149,10 @@ mod tests {
         let restored = BmpaintPackage::decode(&encoded).unwrap();
 
         assert_eq!(restored.version, BMPAINT_VERSION);
-        assert_eq!(restored.asset(asset_id).unwrap().bytes, vec![137, 80, 78, 71, 13, 10, 26, 10]);
+        assert_eq!(
+            restored.asset(asset_id).unwrap().bytes,
+            vec![137, 80, 78, 71, 13, 10, 26, 10]
+        );
         assert!(restored
             .document
             .raster_references
