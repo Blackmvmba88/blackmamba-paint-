@@ -1,5 +1,6 @@
 use bmp_brush::BrushLibrary;
 use bmp_core::{Camera2D, Document, Stroke};
+use bmp_reference::{world_bounds, world_corners};
 use bmp_space::Bounds;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -21,6 +22,14 @@ impl ScreenViewport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RenderReferenceQuad {
+    pub reference_id: Uuid,
+    pub asset_id: Uuid,
+    pub screen_corners: [[f64; 2]; 4],
+    pub opacity: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RenderDab {
     pub stroke_id: Uuid,
     pub world_x: f64,
@@ -35,10 +44,12 @@ pub struct RenderDab {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RenderWarning {
     MissingBrush { stroke_id: Uuid, brush_id: String },
+    InvalidReferenceGeometry { reference_id: Uuid },
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct RenderScene {
+    pub references: Vec<RenderReferenceQuad>,
     pub dabs: Vec<RenderDab>,
     pub warnings: Vec<RenderWarning>,
 }
@@ -58,6 +69,49 @@ pub fn build_render_scene(
 
     let visible_world = conservative_world_viewport(camera, viewport);
     let mut scene = RenderScene::default();
+
+    for reference in document
+        .raster_references
+        .values()
+        .filter(|reference| reference.visible && reference.opacity > 0.0)
+    {
+        let Ok(reference_bounds) = world_bounds(reference) else {
+            scene
+                .warnings
+                .push(RenderWarning::InvalidReferenceGeometry {
+                    reference_id: reference.id,
+                });
+            continue;
+        };
+        let bounds = Bounds::new(
+            reference_bounds.min_x,
+            reference_bounds.min_y,
+            reference_bounds.max_x,
+            reference_bounds.max_y,
+        );
+        if !bounds.intersects(&visible_world) {
+            continue;
+        }
+        let Ok(corners) = world_corners(reference) else {
+            scene
+                .warnings
+                .push(RenderWarning::InvalidReferenceGeometry {
+                    reference_id: reference.id,
+                });
+            continue;
+        };
+        let mut screen_corners = [[0.0; 2]; 4];
+        for (index, corner) in corners.into_iter().enumerate() {
+            let (screen_x, screen_y) = world_to_screen(corner.x, corner.y, camera, viewport);
+            screen_corners[index] = [screen_x, screen_y];
+        }
+        scene.references.push(RenderReferenceQuad {
+            reference_id: reference.id,
+            asset_id: reference.asset_id,
+            screen_corners,
+            opacity: reference.opacity.clamp(0.0, 1.0),
+        });
+    }
 
     for layer in document.layers.values().filter(|layer| layer.visible) {
         for stroke_id in &layer.stroke_ids {
@@ -176,7 +230,7 @@ pub enum RenderError {
 mod tests {
     use super::*;
     use bmp_brush::BrushDefinition;
-    use bmp_core::{Layer, PointSample, Stroke};
+    use bmp_core::{Layer, PointSample, RasterReference, Stroke};
 
     fn point(x: f64, y: f64, pressure: f32) -> PointSample {
         PointSample {
@@ -222,6 +276,39 @@ mod tests {
 
         assert_eq!(scene.dabs.len(), 1);
         assert_eq!(scene.warnings.len(), 0);
+    }
+
+    #[test]
+    fn visible_reference_emits_screen_quad_and_offscreen_reference_is_culled() {
+        let mut document = Document::new("references");
+        let near_asset = Uuid::new_v4();
+        let mut near = RasterReference::new(near_asset, "near.png", "image/png", 100, 50);
+        near.world_width = 200.0;
+        near.world_height = 100.0;
+        near.rotation_rad = std::f64::consts::FRAC_PI_2;
+        let near_id = document.add_raster_reference(near);
+
+        let mut far = RasterReference::new(Uuid::new_v4(), "far.png", "image/png", 100, 50);
+        far.center_x = 1_000_000.0;
+        far.center_y = 1_000_000.0;
+        document.add_raster_reference(far);
+
+        let scene = build_render_scene(
+            &document,
+            Camera2D::default(),
+            ScreenViewport::new(800.0, 600.0).unwrap(),
+            &BrushLibrary::default(),
+        )
+        .unwrap();
+
+        assert_eq!(scene.references.len(), 1);
+        let quad = &scene.references[0];
+        assert_eq!(quad.reference_id, near_id);
+        assert_eq!(quad.asset_id, near_asset);
+        assert!((quad.screen_corners[0][0] - 450.0).abs() < 1e-9);
+        assert!((quad.screen_corners[0][1] - 200.0).abs() < 1e-9);
+        assert!((quad.screen_corners[2][0] - 350.0).abs() < 1e-9);
+        assert!((quad.screen_corners[2][1] - 400.0).abs() < 1e-9);
     }
 
     #[test]
