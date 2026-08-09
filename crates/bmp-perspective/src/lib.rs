@@ -122,17 +122,9 @@ impl Default for PerspectiveConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct GeometricPerspectiveInference {
     pub config: PerspectiveConfig,
-}
-
-impl Default for GeometricPerspectiveInference {
-    fn default() -> Self {
-        Self {
-            config: PerspectiveConfig::default(),
-        }
-    }
 }
 
 impl PerspectiveInference for GeometricPerspectiveInference {
