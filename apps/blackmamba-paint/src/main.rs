@@ -1,6 +1,4 @@
-use bmp_ai::{
-    AnalysisRequest, DeterministicVisualIntelligence, InsightKind, VisualIntelligence,
-};
+use bmp_ai::{AnalysisRequest, DeterministicVisualIntelligence, InsightKind, VisualIntelligence};
 use bmp_brush::{BrushDefinition, BrushLibrary};
 use bmp_core::{Document, Layer};
 use bmp_history::DocumentHistory;
