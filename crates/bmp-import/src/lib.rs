@@ -64,6 +64,13 @@ pub fn import_raster_reference(
     reference.center_y = placement.center_y;
     reference.world_width = source_width * scale;
     reference.world_height = source_height * scale;
+    reference.z_index = document
+        .raster_references
+        .values()
+        .map(|existing| existing.z_index)
+        .max()
+        .unwrap_or(-1)
+        .saturating_add(1);
 
     let reference_id = reference.id;
     assets.insert(asset.id, asset);
@@ -117,7 +124,35 @@ mod tests {
         assert_eq!(reference.center_y, -25.0);
         assert_eq!(reference.world_width, 300.0);
         assert_eq!(reference.world_height, 150.0);
+        assert_eq!(reference.z_index, 0);
         assert_eq!(assets[&reference.asset_id].name, "wide.png");
+    }
+
+    #[test]
+    fn newer_imports_are_stacked_above_existing_references() {
+        let mut document = Document::new("stack");
+        let mut assets = BTreeMap::new();
+        let first_id = import_raster_reference(
+            &mut document,
+            &mut assets,
+            "first.png",
+            "image/png",
+            png_bytes(2, 2),
+            ImportPlacement::centered(0.0, 0.0, 100.0, 100.0),
+        )
+        .unwrap();
+        let second_id = import_raster_reference(
+            &mut document,
+            &mut assets,
+            "second.png",
+            "image/png",
+            png_bytes(2, 2),
+            ImportPlacement::centered(0.0, 0.0, 100.0, 100.0),
+        )
+        .unwrap();
+
+        assert!(document.raster_references[&second_id].z_index
+            > document.raster_references[&first_id].z_index);
     }
 
     #[test]
