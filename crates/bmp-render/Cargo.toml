@@ -10,3 +10,4 @@ bmp-brush = { path = "../bmp-brush" }
 bmp-space = { path = "../bmp-space" }
 serde.workspace = true
 uuid.workspace = true
+thiserror.workspace = true
