@@ -1,0 +1,15 @@
+[package]
+name = "blackmamba-paint-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../../crates/bmp-core" }
+bmp-input = { path = "../../crates/bmp-input" }
+bmp-brush = { path = "../../crates/bmp-brush" }
+bmp-render = { path = "../../crates/bmp-render" }
+winit = "0.30.13"
+wgpu = "30.0.0"
+pollster = "0.4"
+bytemuck = { version = "1.25", features = ["derive"] }
