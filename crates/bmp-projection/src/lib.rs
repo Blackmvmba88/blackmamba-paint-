@@ -103,10 +103,9 @@ impl SphericalProjection {
     }
 
     pub fn direction_to_canvas(&self, direction: Point3) -> Result<CanvasPoint, ProjectionError> {
-        let length = (direction.x * direction.x
-            + direction.y * direction.y
-            + direction.z * direction.z)
-            .sqrt();
+        let length =
+            (direction.x * direction.x + direction.y * direction.y + direction.z * direction.z)
+                .sqrt();
         if !length.is_finite() || length <= f64::EPSILON {
             return Err(ProjectionError::ZeroDirection);
         }
