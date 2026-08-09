@@ -1,0 +1,13 @@
+[package]
+name = "bmp-raster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+bmp-core = { path = "../bmp-core" }
+bmp-storage = { path = "../bmp-storage" }
+bmp-trace = { path = "../bmp-trace" }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
+thiserror.workspace = true
+uuid.workspace = true
