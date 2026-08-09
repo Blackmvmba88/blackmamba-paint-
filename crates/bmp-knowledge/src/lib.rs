@@ -248,11 +248,7 @@ pub struct WorldRule {
 }
 
 impl WorldRule {
-    pub fn new(
-        key: impl Into<String>,
-        value: impl Into<String>,
-        strength: RuleStrength,
-    ) -> Self {
+    pub fn new(key: impl Into<String>, value: impl Into<String>, strength: RuleStrength) -> Self {
         Self {
             id: Uuid::new_v4(),
             key: key.into(),
