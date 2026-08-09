@@ -384,6 +384,9 @@ mod tests {
 
         let restored = Document::from_json(&value.to_string()).unwrap();
         assert!(restored.paths.is_empty());
-        assert!(restored.layers.values().all(|layer| layer.path_ids.is_empty()));
+        assert!(restored
+            .layers
+            .values()
+            .all(|layer| layer.path_ids.is_empty()));
     }
 }
