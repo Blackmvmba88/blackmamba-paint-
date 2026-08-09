@@ -52,7 +52,7 @@ struct GpuState {
 
 impl GpuState {
     async fn new(window: Arc<Window>) -> Result<Self, Box<dyn Error>> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
+        let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window.clone())?;
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
