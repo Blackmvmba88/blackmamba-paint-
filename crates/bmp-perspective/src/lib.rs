@@ -388,7 +388,7 @@ mod tests {
         let lines = vec![
             line_through((0.0, 0.0), left_vp),
             line_through((30.0, 120.0), left_vp),
-            line_through((80.0, -40.0), left_vp),
+            line_through((80.0, -20.0), left_vp),
             line_through((20.0, 10.0), right_vp),
             line_through((90.0, 130.0), right_vp),
             line_through((120.0, -20.0), right_vp),
