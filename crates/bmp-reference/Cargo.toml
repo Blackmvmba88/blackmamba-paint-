@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 bmp-core = { path = "../bmp-core" }
+bmp-path = { path = "../bmp-path" }
 bmp-trace = { path = "../bmp-trace" }
 thiserror.workspace = true
 uuid.workspace = true
