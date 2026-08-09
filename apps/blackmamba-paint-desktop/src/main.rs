@@ -335,16 +335,11 @@ impl DesktopApp {
     }
 
     fn ensure_active_layer(&mut self) {
-        if self
-            .document
-            .layers
-            .iter()
-            .any(|layer| layer.id == self.layer_id)
-        {
+        if self.document.layers.contains_key(&self.layer_id) {
             return;
         }
-        if let Some(layer) = self.document.layers.first() {
-            self.layer_id = layer.id;
+        if let Some((&layer_id, _)) = self.document.layers.iter().next() {
+            self.layer_id = layer_id;
         } else {
             self.layer_id = self.document.add_layer(Layer::new("ink"));
         }
