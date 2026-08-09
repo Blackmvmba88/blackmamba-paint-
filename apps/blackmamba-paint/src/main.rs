@@ -33,7 +33,9 @@ fn main() {
         ],
     );
 
-    document.add_stroke(stroke).expect("stroke should attach to layer");
+    document
+        .add_stroke(stroke)
+        .expect("stroke should attach to layer");
 
     let ai = MockVisualIntelligence;
     let analysis = ai.analyze(
