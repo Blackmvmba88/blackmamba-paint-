@@ -81,16 +81,20 @@ pub fn world_to_pixel(
     )))
 }
 
-pub fn world_bounds(reference: &RasterReference) -> Result<WorldAabb, ReferenceError> {
+pub fn world_corners(reference: &RasterReference) -> Result<[WorldPoint; 4], ReferenceError> {
     validate(reference)?;
     let half_width = reference.world_width * 0.5;
     let half_height = reference.world_height * 0.5;
-    let corners = [
+    Ok([
         local_to_world(reference, -half_width, -half_height),
         local_to_world(reference, half_width, -half_height),
         local_to_world(reference, half_width, half_height),
         local_to_world(reference, -half_width, half_height),
-    ];
+    ])
+}
+
+pub fn world_bounds(reference: &RasterReference) -> Result<WorldAabb, ReferenceError> {
+    let corners = world_corners(reference)?;
 
     let mut min_x = f64::INFINITY;
     let mut min_y = f64::INFINITY;
@@ -191,6 +195,17 @@ mod tests {
         let reference = reference();
         let outside = WorldPoint::new(reference.center_x + 500.0, reference.center_y);
         assert_eq!(world_to_pixel(&reference, outside).unwrap(), None);
+    }
+
+    #[test]
+    fn world_corners_preserve_reference_orientation() {
+        let mut reference = reference();
+        reference.rotation_rad = FRAC_PI_2;
+        let corners = world_corners(&reference).unwrap();
+        assert!((corners[0].x - 1_050.0).abs() < 1e-9);
+        assert!((corners[0].y + 2_100.0).abs() < 1e-9);
+        assert!((corners[2].x - 950.0).abs() < 1e-9);
+        assert!((corners[2].y + 1_900.0).abs() < 1e-9);
     }
 
     #[test]
