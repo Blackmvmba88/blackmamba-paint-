@@ -328,8 +328,7 @@ mod tests {
         let low_id = document.add_raster_reference(low);
 
         let tie_low_asset = Uuid::new_v4();
-        let mut tie_low =
-            RasterReference::new(tie_low_asset, "tie-low.png", "image/png", 10, 10);
+        let mut tie_low = RasterReference::new(tie_low_asset, "tie-low.png", "image/png", 10, 10);
         tie_low.id = Uuid::parse_str("00000000-0000-0000-0000-000000000020").unwrap();
         tie_low.z_index = 5;
         let tie_low_id = document.add_raster_reference(tie_low);
@@ -360,10 +359,7 @@ mod tests {
             .iter()
             .map(|reference| reference.reference_id)
             .collect();
-        assert_eq!(
-            ordered_ids,
-            vec![low_id, tie_low_id, tie_high_id, high_id]
-        );
+        assert_eq!(ordered_ids, vec![low_id, tie_low_id, tie_high_id, high_id]);
     }
 
     #[test]
