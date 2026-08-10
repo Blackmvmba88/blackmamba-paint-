@@ -263,15 +263,13 @@ mod tests {
     #[test]
     fn hit_test_returns_topmost_visible_reference_first() {
         let mut document = Document::new("hits");
-        let mut low =
-            RasterReference::new(Uuid::new_v4(), "low.png", "image/png", 10, 10);
+        let mut low = RasterReference::new(Uuid::new_v4(), "low.png", "image/png", 10, 10);
         low.world_width = 100.0;
         low.world_height = 100.0;
         low.z_index = 2;
         let low_id = document.add_raster_reference(low);
 
-        let mut high =
-            RasterReference::new(Uuid::new_v4(), "high.png", "image/png", 10, 10);
+        let mut high = RasterReference::new(Uuid::new_v4(), "high.png", "image/png", 10, 10);
         high.world_width = 100.0;
         high.world_height = 100.0;
         high.z_index = 9;
@@ -287,8 +285,7 @@ mod tests {
     #[test]
     fn hidden_and_zero_opacity_references_are_not_hittable() {
         let mut document = Document::new("hits");
-        let mut hidden =
-            RasterReference::new(Uuid::new_v4(), "hidden.png", "image/png", 10, 10);
+        let mut hidden = RasterReference::new(Uuid::new_v4(), "hidden.png", "image/png", 10, 10);
         hidden.visible = false;
         document.add_raster_reference(hidden);
         let mut transparent =
