@@ -69,12 +69,18 @@ pub fn build_render_scene(
 
     let visible_world = conservative_world_viewport(camera, viewport);
     let mut scene = RenderScene::default();
-
-    for reference in document
+    let mut references: Vec<_> = document
         .raster_references
         .values()
         .filter(|reference| reference.visible && reference.opacity > 0.0)
-    {
+        .collect();
+    references.sort_by(|left, right| {
+        left.z_index
+            .cmp(&right.z_index)
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    for reference in references {
         let Ok(reference_bounds) = world_bounds(reference) else {
             scene
                 .warnings
@@ -309,6 +315,55 @@ mod tests {
         assert!((quad.screen_corners[0][1] - 200.0).abs() < 1e-9);
         assert!((quad.screen_corners[2][0] - 350.0).abs() < 1e-9);
         assert!((quad.screen_corners[2][1] - 400.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn raster_references_render_back_to_front_by_z_index_and_uuid() {
+        let mut document = Document::new("reference ordering");
+
+        let low_asset = Uuid::new_v4();
+        let mut low = RasterReference::new(low_asset, "low.png", "image/png", 10, 10);
+        low.id = Uuid::parse_str("00000000-0000-0000-0000-000000000010").unwrap();
+        low.z_index = 1;
+        let low_id = document.add_raster_reference(low);
+
+        let tie_low_asset = Uuid::new_v4();
+        let mut tie_low =
+            RasterReference::new(tie_low_asset, "tie-low.png", "image/png", 10, 10);
+        tie_low.id = Uuid::parse_str("00000000-0000-0000-0000-000000000020").unwrap();
+        tie_low.z_index = 5;
+        let tie_low_id = document.add_raster_reference(tie_low);
+
+        let tie_high_asset = Uuid::new_v4();
+        let mut tie_high =
+            RasterReference::new(tie_high_asset, "tie-high.png", "image/png", 10, 10);
+        tie_high.id = Uuid::parse_str("00000000-0000-0000-0000-000000000030").unwrap();
+        tie_high.z_index = 5;
+        let tie_high_id = document.add_raster_reference(tie_high);
+
+        let high_asset = Uuid::new_v4();
+        let mut high = RasterReference::new(high_asset, "high.png", "image/png", 10, 10);
+        high.id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        high.z_index = 9;
+        let high_id = document.add_raster_reference(high);
+
+        let scene = build_render_scene(
+            &document,
+            Camera2D::default(),
+            ScreenViewport::new(800.0, 600.0).unwrap(),
+            &BrushLibrary::default(),
+        )
+        .unwrap();
+
+        let ordered_ids: Vec<_> = scene
+            .references
+            .iter()
+            .map(|reference| reference.reference_id)
+            .collect();
+        assert_eq!(
+            ordered_ids,
+            vec![low_id, tie_low_id, tie_high_id, high_id]
+        );
     }
 
     #[test]
