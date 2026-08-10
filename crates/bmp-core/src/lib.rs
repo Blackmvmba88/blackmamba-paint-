@@ -315,13 +315,8 @@ mod tests {
         let layer_id = doc.add_layer(layer);
         doc.add_stroke(Stroke::new(layer_id, "graphite", vec![]))
             .unwrap();
-        let mut reference = RasterReference::new(
-            Uuid::new_v4(),
-            "ref.png",
-            "image/png",
-            2048,
-            1024,
-        );
+        let mut reference =
+            RasterReference::new(Uuid::new_v4(), "ref.png", "image/png", 2048, 1024);
         reference.z_index = 7;
         let reference_id = doc.add_raster_reference(reference);
         let path = EditablePath::from_polyline([
