@@ -277,6 +277,8 @@ mod tests {
     use super::*;
     use bmp_path::{EditablePath, Vec2};
 
+    // ========== Stroke Tests ==========
+
     #[test]
     fn stroke_is_time_native() {
         let layer = Layer::new("ink");
@@ -304,6 +306,8 @@ mod tests {
         );
         assert_eq!(stroke.duration_ms(), 250);
     }
+
+    // ========== Document Tests ==========
 
     #[test]
     fn document_round_trips_without_losing_world_state() {
@@ -409,4 +413,9 @@ mod tests {
         let restored = Document::from_json(&value.to_string()).unwrap();
         assert_eq!(restored.raster_references[&reference_id].z_index, 0);
     }
-}
+
+    // ========== AI & Observation Tests ==========
+    // TODO: AI integration tests will be coordinated with bmp-ai crate
+
+    // ========== Persistence & Migration Tests ==========
+    // Ensuring backward compatibility and schema evolution

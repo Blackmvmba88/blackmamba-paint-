@@ -19,11 +19,30 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Format
+      
+      - name: "Cache dependencies"
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      
+      - name: "Format check (rustfmt)"
         run: cargo fmt --all -- --check
-      - name: Check
+      
+      - name: "Compilation check"
         run: cargo check --workspace --all-targets
-      - name: Test
-        run: cargo test --workspace
-      - name: Clippy
+      
+      - name: "Linting (clippy)"
         run: cargo clippy --workspace --all-targets -- -D warnings
+      
+      - name: "Run tests"
+        run: cargo test --workspace --verbose
+      
+      - name: "Build documentation"
+        run: cargo doc --workspace --no-deps --document-private-items
+      
+      - name: "Run demo application"
+        run: cargo run --release --bin blackmamba-paint 2>&1 | head -50
+

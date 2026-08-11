@@ -363,15 +363,21 @@ fn infer_horizon(vanishing_points: &[VanishingPoint], radius: f64) -> Option<Hor
 mod tests {
     use super::*;
 
+    // ========== Test Helpers ==========
+
     fn line_through(point: (f64, f64), vanishing_point: (f64, f64)) -> LineObservation {
         LineObservation::new(point.0, point.1, vanishing_point.0, vanishing_point.1)
     }
+
+    // ========== Projection Mode Tests ==========
 
     #[test]
     fn projection_is_explicit_in_perspective_solution() {
         let result = StubPerspectiveInference.infer(&[], ProjectionMode::Spherical);
         assert_eq!(result.projection, ProjectionMode::Spherical);
     }
+
+    // ========== Geometric Solver Tests ==========
 
     #[test]
     fn geometric_solver_recovers_two_vanishing_points_and_horizon() {
