@@ -378,6 +378,8 @@ mod tests {
     use super::*;
     use bmp_core::{Document, Layer, PointSample, Stroke};
 
+    // ========== Test Helpers ==========
+
     fn add_line(document: &mut Document, layer_id: Uuid, from: (f64, f64), to: (f64, f64)) {
         document
             .add_stroke(Stroke::new(
@@ -405,6 +407,8 @@ mod tests {
             .unwrap();
     }
 
+    // ========== Contract & Immutability Tests ==========
+
     #[test]
     fn ai_cannot_mutate_document_and_reports_preserve_locks() {
         let mut doc = Document::new("Study");
@@ -425,6 +429,8 @@ mod tests {
             vec!["silhouette", "expression"]
         );
     }
+
+    // ========== Integration Tests: Document + AI + Perspective ==========
 
     #[test]
     fn deterministic_ai_turns_strokes_into_perspective_critique_and_ghost() {

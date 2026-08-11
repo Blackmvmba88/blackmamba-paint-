@@ -1,0 +1,15 @@
+# BlackMamba Paint - Clippy Configuration
+# Enforce code quality and best practices
+
+# Lint level enforcement
+too_many_arguments_threshold = 8
+type_complexity_threshold = 500
+
+# Allow specific patterns that are intentional
+allowed_duplicate_crates = []
+
+# Cognitive complexity (function complexity)
+cognitive_complexity_threshold = 30
+
+# Single char lifetime names are fine in generic code
+single_char_lifetime_names_threshold = 4

@@ -1,0 +1,35 @@
+# BlackMamba Paint - Cargo Configuration
+# Build optimization and behavior settings
+
+[alias]
+# Development commands
+dev = "check --all"
+t = "test --all"
+tc = "test --all --no-fail-fast"
+fmt-check = "fmt --all -- --check"
+
+# Lint commands
+lint = "clippy --workspace --all-targets -- -D warnings"
+lint-all = "clippy --workspace --all-targets --all-features -- -D warnings"
+
+# Documentation commands  
+doc = "doc --no-deps --all"
+doc-open = "doc --no-deps --all --open"
+
+[build]
+# Parallel compilation
+jobs = 8
+
+# Optimize debug builds slightly for faster iteration
+# while keeping fast compile times
+rustflags = ["-C", "opt-level=1"]
+
+[doc]
+# Treat warnings as errors in documentation
+rustdoc-args = ["--cap-lints", "warn"]
+
+[term]
+# Use colors in terminal output
+color = "auto"
+# Show progress information
+progress.when = "auto"
